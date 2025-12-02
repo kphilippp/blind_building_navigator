@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { View, TouchableOpacity, Animated, Text, Image, ImageBackground } from "react-native";
+import { View, TouchableOpacity, Animated, Text, Image, ImageBackground, Pressable } from "react-native";
 import { voiceService } from "../services/voiceService";
 import { speechService } from "../services/speechService";
 import * as Haptics from "expo-haptics";
@@ -7,8 +7,11 @@ import * as Haptics from "expo-haptics";
 export default function GuidancePage() {
   const [isListening, setIsListening] = useState(false);
   const [currentInstruction, setCurrentInstruction] = useState<string | null>(null);
+  const [tapPrompt, setTapPrompt] = useState<string | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const dotOffset = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const tripleTapResolver = useRef<(() => void) | null>(null);
+  const tapCountRef = useRef(0);
 
   const handleMicPress = async () => {
     try {
@@ -84,12 +87,14 @@ export default function GuidancePage() {
         deltaX: 0,
         deltaY: -5,
         hapticCount: 5,
+        tapPrompt: "Tap the screen three times once you're inside the elevator.",
       },{
         text: "Ok we need to go up to floor 3, press the button for floor 3 and exit the elevator on your right.",
         duration: 3100,
         deltaX: 0,
         deltaY: 0,
         hapticCount: 0,
+        tapPrompt: "Tap the screen three times once you exit the elevator.",
       },{
         text: "Exit the elevator then turn right",
         duration: 2000,
@@ -99,32 +104,14 @@ export default function GuidancePage() {
       },
     ];
 
-    const waitForConfirmation = async (
-      prompt: string,
-      keywords: string[]
-    ) => {
-      while (!isCancelled) {
-        await speechService
-          .speak(prompt)
-          .catch((err) => console.error("TTS error:", err));
-
-        try {
-          await voiceService.startListening();
-          await new Promise((resolve) => setTimeout(resolve, 3000));
-          const result = await voiceService.stopListening();
-          const heard = (result?.transcript || "").toLowerCase();
-
-          if (keywords.some((kw) => heard.includes(kw))) {
-            return;
-          }
-        } catch (err) {
-          console.error("Confirmation listen error:", err);
-        }
-
-        await speechService
-          .speak("I didn't catch that, please say it again.")
-          .catch((err) => console.error("TTS error:", err));
-      }
+    const waitForTripleTap = async (prompt: string) => {
+      setTapPrompt(prompt);
+      tapCountRef.current = 0;
+      await new Promise<void>((resolve) => {
+        tripleTapResolver.current = resolve;
+      });
+      tripleTapResolver.current = null;
+      setTapPrompt(null);
     };
 
     const run = async () => {
@@ -161,19 +148,9 @@ export default function GuidancePage() {
         move.start();
         await new Promise((resolve) => setTimeout(resolve, step.duration));
 
-        // Elevator checkpoints: after elevator entry and after ride
-        if (step.text.includes("get in it")) {
-          await waitForConfirmation(
-            "Let me know when you are inside the elevator. Say inside when you're in.",
-            ["inside", "in"]
-          );
-        }
-
-        if (step.text.includes("press the button for floor 3")) {
-          await waitForConfirmation(
-            "Say out when you exit the elevator so we can continue.",
-            ["out", "outside", "exit"]
-          );
+        // Elevator checkpoints: require triple-tap to continue
+        if (step.tapPrompt) {
+          await waitForTripleTap(step.tapPrompt);
         }
       }
       setCurrentInstruction(null);
@@ -187,14 +164,27 @@ export default function GuidancePage() {
     };
   }, [dotOffset]);
 
+  const handleScreenTap = () => {
+    if (tripleTapResolver.current) {
+      tapCountRef.current += 1;
+      if (tapCountRef.current >= 3) {
+        tripleTapResolver.current();
+      }
+    }
+  };
+
   return (
-    <View className="flex-1 bg-white">
-      <View className="px-4 pt-4">
-        <Text className="text-lg font-semibold text-gray-800 mb-2">Your Location</Text>
-        {currentInstruction && (
-          <Text className="text-base text-gray-700 mb-2">{currentInstruction}</Text>
-        )}
-      </View>
+    <Pressable style={{ flex: 1 }} onPress={handleScreenTap}>
+      <View className="flex-1 bg-white">
+        <View className="px-4 pt-4">
+          <Text className="text-lg font-semibold text-gray-800 mb-2">Your Location</Text>
+          {currentInstruction && (
+            <Text className="text-base text-gray-700 mb-2">{currentInstruction}</Text>
+          )}
+          {tapPrompt && (
+            <Text className="text-base text-blue-700 mb-2">{tapPrompt}</Text>
+          )}
+        </View>
 
       <View className="px-4">
         <View
@@ -235,32 +225,33 @@ export default function GuidancePage() {
         </View>
       </View>
 
-      <View className="flex-1 items-center justify-center pb-16">
-        <TouchableOpacity onPress={handleMicPress} disabled={isListening} activeOpacity={0.85}>
-          <Animated.View
-            style={{
-              width: 200,
-              height: 200,
-              backgroundColor: "#1A75BB",
-              borderRadius: 100,
-              transform: [{ scale: pulseAnim }],
-            }}
-            className="items-center justify-center"
-          >
-            <Image
-              source={require("../assets/mic.png")}
-              style={{ width: 96, height: 96 }}
-              resizeMode="contain"
-            />
-          </Animated.View>
-        </TouchableOpacity>
+        <View className="flex-1 items-center justify-center pb-16">
+          <TouchableOpacity onPress={handleMicPress} disabled={isListening} activeOpacity={0.85}>
+            <Animated.View
+              style={{
+                width: 200,
+                height: 200,
+                backgroundColor: "#1A75BB",
+                borderRadius: 100,
+                transform: [{ scale: pulseAnim }],
+              }}
+              className="items-center justify-center"
+            >
+              <Image
+                source={require("../assets/mic.png")}
+                style={{ width: 96, height: 96 }}
+                resizeMode="contain"
+              />
+            </Animated.View>
+          </TouchableOpacity>
 
-        {isListening && (
-          <Text style={{ color: "#1A75BB" }} className="text-xl mt-8">
-            Listening...
-          </Text>
-        )}
+          {isListening && (
+            <Text style={{ color: "#1A75BB" }} className="text-xl mt-8">
+              Listening...
+            </Text>
+          )}
+        </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
