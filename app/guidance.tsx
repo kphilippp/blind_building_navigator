@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { voiceService } from "../services/voiceService";
 import { speechService } from "../services/speechService";
-import * as Haptics from "expo-haptics";
+import { platformHaptics, ImpactFeedbackStyle } from "../utils/platformHaptics";
 
 export default function GuidancePage() {
   const [isListening, setIsListening] = useState(false);
@@ -18,7 +18,10 @@ export default function GuidancePage() {
     null
   );
   const [tapPrompt, setTapPrompt] = useState<string | null>(null);
+  const [currentFloor, setCurrentFloor] = useState(1);
+  const [hapticActive, setHapticActive] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const hapticFlashAnim = useRef(new Animated.Value(0)).current;
   const dotOffset = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const tripleTapResolver = useRef<(() => void) | null>(null);
   const tapCountRef = useRef(0);
@@ -96,7 +99,7 @@ export default function GuidancePage() {
         hapticCount: 1,
       },
       {
-        text: "Now take about 35 steps forwards.",
+        text: "Now take about 70 steps forwards.",
         duration: 10000,
         deltaX: 130,
         deltaY: 0,
@@ -131,25 +134,33 @@ export default function GuidancePage() {
         deltaX: 0,
         deltaY: 5,
         hapticCount: 1,
+        changeFloor: 3,
       },
       {
-        text: "Now continue straight for about 15 steps.",
+        text: "Now continue straight for about 20-22 steps.",
         duration: 6000,
-        deltaX: -25,
+        deltaX: -60,
         deltaY: 0,
         hapticCount: 1,
       },
       {
         text: "Your approaching your destination, on the left",
         duration: 2000,
-        deltaX: -10,
+        deltaX: -30,
         deltaY: 0,
         hapticCount: 1,
       },
       {
         text: "WAIT! thats too far you just missed it",
         duration: 2000,
-        deltaX: 10,
+        deltaX: 12,
+        deltaY: 0,
+        hapticCount: 10,
+      },
+      {
+        text: "YOU'VE ARRIVED",
+        duration: 2000,
+        deltaX: 0,
         deltaY: 0,
         hapticCount: 10,
       },
@@ -170,6 +181,11 @@ export default function GuidancePage() {
         if (isCancelled) break;
         setCurrentInstruction(step.text);
 
+        // Check if we need to change floor
+        if ((step as any).changeFloor) {
+          setCurrentFloor((step as any).changeFloor);
+        }
+
         // Start speaking immediately; don't block on completion
         if (step.text.trim()) {
           speechService
@@ -181,7 +197,26 @@ export default function GuidancePage() {
         if (step.hapticCount && step.hapticCount > 0) {
           for (let i = 0; i < step.hapticCount; i++) {
             if (isCancelled) break;
-            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+            // Visual flash effect
+            setHapticActive(true);
+            Animated.sequence([
+              Animated.timing(hapticFlashAnim, {
+                toValue: 1,
+                duration: 100,
+                useNativeDriver: false,
+              }),
+              Animated.timing(hapticFlashAnim, {
+                toValue: 0,
+                duration: 150,
+                useNativeDriver: false,
+              }),
+            ]).start();
+
+            await platformHaptics.impactAsync(ImpactFeedbackStyle.Medium);
+
+            setTimeout(() => setHapticActive(false), 250);
+
             if (i < step.hapticCount - 1) {
               await new Promise((resolve) => setTimeout(resolve, 250));
             }
@@ -228,20 +263,70 @@ export default function GuidancePage() {
     }
   };
 
+  const hapticFlashColor = hapticFlashAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(26, 117, 187, 0)", "rgba(26, 117, 187, 0.3)"],
+  });
+
   return (
     <Pressable style={{ flex: 1 }} onPress={handleScreenTap}>
       <View className="flex-1 bg-white">
+        {/* Haptic visual flash overlay */}
+        <Animated.View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: hapticFlashColor,
+            zIndex: 1000,
+            pointerEvents: "none",
+          }}
+        />
         <View className="px-4 pt-4">
           <Text className="text-lg font-semibold text-gray-800 mb-2">
             Your Location
           </Text>
           {currentInstruction && (
-            <Text className="text-base text-gray-700 mb-2">
-              {currentInstruction}
-            </Text>
+            <View
+              style={{
+                backgroundColor: "#1A75BB",
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 8,
+              }}
+            >
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 18,
+                  fontWeight: "500",
+                }}
+              >
+                {currentInstruction}
+              </Text>
+            </View>
           )}
           {tapPrompt && (
-            <Text className="text-base text-blue-700 mb-2">{tapPrompt}</Text>
+            <View
+              style={{
+                backgroundColor: "#1A75BB",
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 8,
+              }}
+            >
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 18,
+                  fontWeight: "500",
+                }}
+              >
+                {tapPrompt}
+              </Text>
+            </View>
           )}
         </View>
 
@@ -250,12 +335,16 @@ export default function GuidancePage() {
             style={{
               borderRadius: 16,
               overflow: "hidden",
-              backgroundColor: "#F3F4F6",
+              backgroundColor: "#FFFFFF",
               position: "relative",
             }}
           >
             <ImageBackground
-              source={require("../assets/floorplan.png")}
+              source={
+                currentFloor === 3
+                  ? require("../assets/floorplan2.png")
+                  : require("../assets/floorplan.png")
+              }
               resizeMode="contain"
               style={{
                 width: "100%",
@@ -297,14 +386,25 @@ export default function GuidancePage() {
                 backgroundColor: "#1A75BB",
                 borderRadius: 100,
                 transform: [{ scale: pulseAnim }],
+                overflow: "hidden",
               }}
-              className="items-center justify-center"
             >
-              <Image
-                source={require("../assets/mic.png")}
-                style={{ width: 96, height: 96 }}
-                resizeMode="contain"
-              />
+              <View
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Image
+                  source={require("../assets/mic.png")}
+                  style={{
+                    width: 96,
+                    height: 96,
+                  }}
+                  resizeMode="contain"
+                />
+              </View>
             </Animated.View>
           </TouchableOpacity>
 

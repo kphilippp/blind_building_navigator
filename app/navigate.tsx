@@ -6,11 +6,12 @@ import { navigationService } from "../services/navigationService";
 import { speechService } from "../services/speechService";
 import { voiceService } from "../services/voiceService";
 import { aiService } from "../services/aiService";
-import * as Haptics from "expo-haptics";
+import { platformHaptics, ImpactFeedbackStyle } from "../utils/platformHaptics";
 
 export default function NavigatePage() {
   const [isListening, setIsListening] = useState(false);
   const [hasAnnounced, setHasAnnounced] = useState(false);
+  const [usedFallback, setUsedFallback] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const router = useRouter();
   const {
@@ -66,7 +67,7 @@ export default function NavigatePage() {
 
     // Haptic feedback
     if (state.settings.hapticFeedbackEnabled) {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await platformHaptics.impactAsync(ImpactFeedbackStyle.Medium);
     }
 
     // Voice announcement
@@ -168,6 +169,7 @@ export default function NavigatePage() {
 
     if (aiResponse.room && aiResponse.confidence > 0.3) {
       setPendingRoom(aiResponse.room);
+      setUsedFallback(false);
 
       // Ask for confirmation
       setAwaitingConfirmation(true);
@@ -177,10 +179,16 @@ export default function NavigatePage() {
         );
       }
     } else {
-      // Could not recognize room
+      // Fallback to 3.335 for noisy environments
+      const fallbackRoom = "ECSW 3.335";
+      setPendingRoom(fallbackRoom);
+      setUsedFallback(true);
+
       if (state.settings.voiceGuidanceEnabled) {
-        await speechService.speak("Sorry, I didn't catch that. Please specify the room number again.");
+        await speechService.speak(`Using fallback room: ${fallbackRoom}. Say yes to confirm.`);
       }
+
+      setAwaitingConfirmation(true);
     }
   };
 
@@ -217,9 +225,16 @@ export default function NavigatePage() {
               Awaiting room. Press the mic and say the room number.
             </Text>
             {pendingRoom && (
-              <Text style={{ color: "#92400E" }} className="mt-2">
-                Confirm: {pendingRoom} (say yes to confirm or say the room again)
-              </Text>
+              <View>
+                <Text style={{ color: "#92400E" }} className="mt-2">
+                  Confirm: {pendingRoom} (say yes to confirm or say the room again)
+                </Text>
+                {usedFallback && (
+                  <Text style={{ color: "#DC2626" }} className="mt-2 text-sm">
+                    (Fallback - couldn't detect voice in noisy environment)
+                  </Text>
+                )}
+              </View>
             )}
           </View>
         )}
@@ -257,15 +272,23 @@ export default function NavigatePage() {
               height: 160,
               backgroundColor: "#1A75BB",
               borderRadius: 80,
-              transform: [{ scale: pulseAnim }]
+              transform: [{ scale: pulseAnim }],
+              overflow: "hidden",
             }}
-            className="items-center justify-center"
           >
-            <Image
-              source={require("../assets/mic.png")}
-              style={{ width: 80, height: 80 }}
-              resizeMode="contain"
-            />
+            <View
+              style={{
+                flex: 1,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Image
+                source={require("../assets/mic.png")}
+                style={{ width: 80, height: 80 }}
+                resizeMode="contain"
+              />
+            </View>
           </Animated.View>
         </TouchableOpacity>
 
