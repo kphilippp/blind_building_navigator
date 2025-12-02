@@ -1,12 +1,22 @@
 import { useState, useRef, useEffect } from "react";
-import { View, TouchableOpacity, Animated, Text, Image, ImageBackground, Pressable } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  Animated,
+  Text,
+  Image,
+  ImageBackground,
+  Pressable,
+} from "react-native";
 import { voiceService } from "../services/voiceService";
 import { speechService } from "../services/speechService";
 import * as Haptics from "expo-haptics";
 
 export default function GuidancePage() {
   const [isListening, setIsListening] = useState(false);
-  const [currentInstruction, setCurrentInstruction] = useState<string | null>(null);
+  const [currentInstruction, setCurrentInstruction] = useState<string | null>(
+    null
+  );
   const [tapPrompt, setTapPrompt] = useState<string | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const dotOffset = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
@@ -19,8 +29,16 @@ export default function GuidancePage() {
 
       Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.2, duration: 500, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
         ])
       ).start();
 
@@ -55,13 +73,14 @@ export default function GuidancePage() {
         deltaX: 0,
         deltaY: 0,
         hapticCount: 0,
-      },{
+      },
+      {
         text: "Turn right and take 10 steps forward",
         duration: 3500,
         deltaX: 0,
         deltaY: -25,
         hapticCount: 2,
-      },      
+      },
       {
         text: "There's a door, go through it. Be careful this is a high traffic area.",
         duration: 3000,
@@ -75,32 +94,64 @@ export default function GuidancePage() {
         deltaX: 0,
         deltaY: -2,
         hapticCount: 1,
-      },{
+      },
+      {
         text: "Now take about 35 steps forwards.",
         duration: 10000,
         deltaX: 130,
         deltaY: 0,
         hapticCount: 0,
-      },{
-        text: "Ok There should be an elevator ahead on your left, lets get in it.",
+      },
+      {
+        text: "Ok There should be an elevator ahead on your left, tap the screen 3 times once you're inside the elevator.",
         duration: 3000,
         deltaX: 0,
-        deltaY: -5,
+        deltaY: 0,
         hapticCount: 5,
-        tapPrompt: "Tap the screen three times once you're inside the elevator.",
-      },{
-        text: "Ok we need to go up to floor 3, press the button for floor 3 and exit the elevator on your right.",
+        tapPrompt:
+          "Tap the screen three times once you're inside the elevator.",
+      },
+      {
+        text: "",
+        duration: 1000,
+        deltaX: 0,
+        deltaY: -5,
+      },
+      {
+        text: "Ok we need to go up to floor 3, Once your there press the screen 3 times .",
         duration: 3100,
         deltaX: 0,
         deltaY: 0,
         hapticCount: 0,
         tapPrompt: "Tap the screen three times once you exit the elevator.",
-      },{
-        text: "Exit the elevator then turn right",
+      },
+      {
+        text: "Now that your on floor 3, take a couple steps and turn right",
         duration: 2000,
         deltaX: 0,
         deltaY: 5,
         hapticCount: 1,
+      },
+      {
+        text: "Now continue straight for about 15 steps.",
+        duration: 6000,
+        deltaX: -25,
+        deltaY: 0,
+        hapticCount: 1,
+      },
+      {
+        text: "Your approaching your destination, on the left",
+        duration: 2000,
+        deltaX: -10,
+        deltaY: 0,
+        hapticCount: 1,
+      },
+      {
+        text: "WAIT! thats too far you just missed it",
+        duration: 2000,
+        deltaX: 10,
+        deltaY: 0,
+        hapticCount: 10,
       },
     ];
 
@@ -120,7 +171,11 @@ export default function GuidancePage() {
         setCurrentInstruction(step.text);
 
         // Start speaking immediately; don't block on completion
-        speechService.speak(step.text).catch((err) => console.error("TTS error:", err));
+        if (step.text.trim()) {
+          speechService
+            .speak(step.text)
+            .catch((err) => console.error("TTS error:", err));
+        }
 
         // Optional haptics per step
         if (step.hapticCount && step.hapticCount > 0) {
@@ -177,56 +232,64 @@ export default function GuidancePage() {
     <Pressable style={{ flex: 1 }} onPress={handleScreenTap}>
       <View className="flex-1 bg-white">
         <View className="px-4 pt-4">
-          <Text className="text-lg font-semibold text-gray-800 mb-2">Your Location</Text>
+          <Text className="text-lg font-semibold text-gray-800 mb-2">
+            Your Location
+          </Text>
           {currentInstruction && (
-            <Text className="text-base text-gray-700 mb-2">{currentInstruction}</Text>
+            <Text className="text-base text-gray-700 mb-2">
+              {currentInstruction}
+            </Text>
           )}
           {tapPrompt && (
             <Text className="text-base text-blue-700 mb-2">{tapPrompt}</Text>
           )}
         </View>
 
-      <View className="px-4">
-        <View
-          style={{
-            borderRadius: 16,
-            overflow: "hidden",
-            backgroundColor: "#F3F4F6",
-            position: "relative",
-          }}
-        >
-          <ImageBackground
-            source={require("../assets/floorplan.png")}
-            resizeMode="contain"
+        <View className="px-4">
+          <View
             style={{
-              width: "100%",
-              aspectRatio: 1.2,
-              justifyContent: "flex-end",
-              alignItems: "flex-start",
+              borderRadius: 16,
+              overflow: "hidden",
+              backgroundColor: "#F3F4F6",
               position: "relative",
             }}
           >
-            {/* Static red dot bottom-left for now; will animate per instructions later */}
-            <Animated.View
+            <ImageBackground
+              source={require("../assets/floorplan.png")}
+              resizeMode="contain"
               style={{
-                width: 18,
-                height: 18,
-                borderRadius: 9,
-                backgroundColor: "#EF4444",
-                position: "absolute",
-                left: "40%",
-                bottom: "24%",
-                borderWidth: 2,
-                borderColor: "#FFFFFF",
-                transform: dotOffset.getTranslateTransform(),
+                width: "100%",
+                aspectRatio: 1.2,
+                justifyContent: "flex-end",
+                alignItems: "flex-start",
+                position: "relative",
               }}
-            />
-          </ImageBackground>
+            >
+              {/* Static red dot bottom-left for now; will animate per instructions later */}
+              <Animated.View
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: 9,
+                  backgroundColor: "#EF4444",
+                  position: "absolute",
+                  left: "40%",
+                  bottom: "24%",
+                  borderWidth: 2,
+                  borderColor: "#FFFFFF",
+                  transform: dotOffset.getTranslateTransform(),
+                }}
+              />
+            </ImageBackground>
+          </View>
         </View>
-      </View>
 
         <View className="flex-1 items-center justify-center pb-16">
-          <TouchableOpacity onPress={handleMicPress} disabled={isListening} activeOpacity={0.85}>
+          <TouchableOpacity
+            onPress={handleMicPress}
+            disabled={isListening}
+            activeOpacity={0.85}
+          >
             <Animated.View
               style={{
                 width: 200,
