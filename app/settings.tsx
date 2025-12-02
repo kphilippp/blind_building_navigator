@@ -1,9 +1,31 @@
-import { View, Text, Switch } from "react-native";
-import { useState } from "react";
+import { View, Text, Switch, TouchableOpacity, Alert } from "react-native";
+import { useNavigation } from "../contexts/NavigationContext";
+import { speechService } from "../services/speechService";
 
 export default function SettingsPage() {
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [hapticEnabled, setHapticEnabled] = useState(true);
+  const { state, updateSettings } = useNavigation();
+
+  const handleVoiceToggle = async (value: boolean) => {
+    updateSettings({ voiceGuidanceEnabled: value });
+
+    if (value) {
+      await speechService.speak("Voice guidance enabled");
+    }
+  };
+
+  const handleHapticToggle = (value: boolean) => {
+    updateSettings({ hapticFeedbackEnabled: value });
+  };
+
+  const testVoiceGuidance = async () => {
+    if (state.settings.voiceGuidanceEnabled) {
+      await speechService.speak(
+        "This is a test of the voice guidance system. Navigation instructions will be announced as you navigate."
+      );
+    } else {
+      Alert.alert("Voice Guidance Disabled", "Please enable voice guidance to test.");
+    }
+  };
 
   return (
     <View className="flex-1 bg-white">
@@ -13,37 +35,58 @@ export default function SettingsPage() {
             Accessibility Settings
           </Text>
           <Text className="text-purple-700">
-            Customize your navigation experience.
+            Customize your navigation experience for optimal accessibility.
           </Text>
         </View>
 
-        <View className="bg-white border border-gray-200 rounded-lg">
+        <View className="bg-white border border-gray-200 rounded-lg mb-4">
           <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
-            <View>
+            <View className="flex-1">
               <Text className="text-gray-900 font-semibold">Voice Guidance</Text>
               <Text className="text-gray-600 text-sm">
                 Enable audio navigation instructions
               </Text>
             </View>
-            <Switch value={voiceEnabled} onValueChange={setVoiceEnabled} />
+            <Switch
+              value={state.settings.voiceGuidanceEnabled}
+              onValueChange={handleVoiceToggle}
+            />
           </View>
 
           <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
-            <View>
+            <View className="flex-1">
               <Text className="text-gray-900 font-semibold">Haptic Feedback</Text>
               <Text className="text-gray-600 text-sm">
-                Vibration alerts for navigation
+                Vibration alerts for navigation updates
               </Text>
             </View>
-            <Switch value={hapticEnabled} onValueChange={setHapticEnabled} />
+            <Switch
+              value={state.settings.hapticFeedbackEnabled}
+              onValueChange={handleHapticToggle}
+            />
           </View>
 
-          <View className="flex-row justify-between items-center p-4">
-            <View>
-              <Text className="text-gray-900 font-semibold">App Version</Text>
-              <Text className="text-gray-600 text-sm">1.0.0</Text>
-            </View>
+          <TouchableOpacity
+            className="p-4 border-b border-gray-200"
+            onPress={testVoiceGuidance}
+          >
+            <Text className="text-blue-600 font-semibold">Test Voice Guidance</Text>
+            <Text className="text-gray-600 text-sm">
+              Play a sample navigation instruction
+            </Text>
+          </TouchableOpacity>
+
+          <View className="p-4">
+            <Text className="text-gray-900 font-semibold">App Version</Text>
+            <Text className="text-gray-600 text-sm">1.0.0 - JET2 NAV</Text>
           </View>
+        </View>
+
+        <View className="bg-blue-50 p-4 rounded-lg">
+          <Text className="text-blue-900 font-semibold mb-2">About</Text>
+          <Text className="text-blue-700 text-sm">
+            JET2 NAV is an accessible indoor navigation system designed to help users navigate buildings with voice guidance and haptic feedback.
+          </Text>
         </View>
       </View>
     </View>
