@@ -1,19 +1,44 @@
 import "../global.css";
 import { Stack, useRouter } from "expo-router";
-import { Text, View, TouchableOpacity } from "react-native";
-import { NavigationProvider } from "../contexts/NavigationContext";
+import { Text, TouchableOpacity, Image, View } from "react-native";
+import { NavigationProvider, useNavigation } from "../contexts/NavigationContext";
 
-function HeaderLeft() {
+function HeaderTitle() {
   const router = useRouter();
+  const { resetNavigation } = useNavigation();
 
   return (
     <TouchableOpacity
-      onPress={() => router.push("/")}
-      className="flex-row items-center ml-4"
-      activeOpacity={0.7}
+      onPress={() => {
+        resetNavigation();
+        router.replace("/");
+      }}
+      activeOpacity={0.8}
     >
-      <Text className="text-2xl mr-2">📍</Text>
-      <Text className="text-xl font-bold text-gray-900">JET2 NAV</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingVertical: 8,
+          paddingHorizontal: 4,
+        }}
+      >
+        <Image
+          source={require("../assets/logo.png")}
+          style={{ width: 32, height: 32, tintColor: "#FFFFFF", marginRight: 8 }}
+          resizeMode="contain"
+        />
+        <Text
+          style={{
+            color: "#FFFFFF",
+            fontSize: 18,
+            fontWeight: "700",
+            letterSpacing: 0.5,
+          }}
+        >
+          JET2 NAV
+        </Text>
+      </View>
     </TouchableOpacity>
   );
 }
@@ -24,17 +49,23 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerStyle: {
-            backgroundColor: "#ffffff",
-            elevation: 0,
-            shadowOpacity: 0,
+            backgroundColor: "#0D5A94",
           },
-          headerLeft: () => <HeaderLeft />,
-          headerTitle: "",
+          headerTintColor: "#FFFFFF",
+          headerTitleAlign: "left",
+          headerTitleContainerStyle: { alignItems: "flex-start" },
+          headerTransparent: false,
+          headerShadowVisible: false,
+          headerBackVisible: false,
+          gestureEnabled: false,
+          headerLeft: () => null,
+          headerTitle: () => <HeaderTitle />,
         }}
       >
         <Stack.Screen name="index" />
         <Stack.Screen name="navigate" />
         <Stack.Screen name="settings" />
+        <Stack.Screen name="guidance" />
       </Stack>
     </NavigationProvider>
   );

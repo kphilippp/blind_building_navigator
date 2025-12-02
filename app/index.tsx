@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Animated, Alert } from "react-native";
+import { View, Text, TouchableOpacity, Animated, Alert, Image } from "react-native";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { useNavigation } from "../contexts/NavigationContext";
@@ -12,7 +12,7 @@ export default function HomePage() {
   const [hasGreeted, setHasGreeted] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const router = useRouter();
-  const { setCurrentLocation, state } = useNavigation();
+  const { setCurrentLocation, setPhase, clearRoute, setDestination, state } = useNavigation();
 
   useEffect(() => {
     // Announce the prompt on app launch
@@ -67,6 +67,10 @@ export default function HomePage() {
 
         // Set building as current location
         setCurrentLocation(aiResponse.building);
+        // Clear any stale navigation data and move to room capture phase
+        clearRoute();
+        setDestination("");
+        setPhase("room");
 
         // Navigate to navigation page immediately
         router.push("/navigate");
@@ -95,7 +99,7 @@ export default function HomePage() {
   };
 
   return (
-    <View className="flex-1 bg-blue-500 items-center justify-center">
+    <View style={{ flex: 1, backgroundColor: "#1A75BB" }} className="items-center justify-center">
       {displayText ? (
         <Text className="text-white text-5xl font-bold mb-12">{displayText}</Text>
       ) : (
@@ -108,10 +112,20 @@ export default function HomePage() {
         activeOpacity={0.8}
       >
         <Animated.View
-          className="w-64 h-64 bg-blue-700 rounded-full items-center justify-center"
-          style={{ transform: [{ scale: pulseAnim }] }}
+          style={{
+            width: 256,
+            height: 256,
+            backgroundColor: "#0D5A94",
+            borderRadius: 128,
+            transform: [{ scale: pulseAnim }]
+          }}
+          className="items-center justify-center"
         >
-          <Text className="text-white text-8xl">🎤</Text>
+          <Image
+            source={require("../assets/mic.png")}
+            style={{ width: 120, height: 120 }}
+            resizeMode="contain"
+          />
         </Animated.View>
       </TouchableOpacity>
 

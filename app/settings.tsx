@@ -30,11 +30,11 @@ export default function SettingsPage() {
   return (
     <View className="flex-1 bg-white">
       <View className="px-6 pt-4">
-        <View className="bg-purple-50 p-4 rounded-lg mb-4">
-          <Text className="text-lg text-purple-900 font-semibold mb-2">
+        <View style={{ backgroundColor: "#E8F4FC" }} className="p-4 rounded-lg mb-4">
+          <Text style={{ color: "#1A75BB" }} className="text-lg font-semibold mb-2">
             Accessibility Settings
           </Text>
-          <Text className="text-purple-700">
+          <Text style={{ color: "#0D5A94" }}>
             Customize your navigation experience for optimal accessibility.
           </Text>
         </View>
@@ -50,6 +50,8 @@ export default function SettingsPage() {
             <Switch
               value={state.settings.voiceGuidanceEnabled}
               onValueChange={handleVoiceToggle}
+              trackColor={{ false: "#D1D5DB", true: "#B8DAEF" }}
+              thumbColor={state.settings.voiceGuidanceEnabled ? "#1A75BB" : "#F3F4F6"}
             />
           </View>
 
@@ -63,6 +65,8 @@ export default function SettingsPage() {
             <Switch
               value={state.settings.hapticFeedbackEnabled}
               onValueChange={handleHapticToggle}
+              trackColor={{ false: "#D1D5DB", true: "#B8DAEF" }}
+              thumbColor={state.settings.hapticFeedbackEnabled ? "#1A75BB" : "#F3F4F6"}
             />
           </View>
 
@@ -70,7 +74,7 @@ export default function SettingsPage() {
             className="p-4 border-b border-gray-200"
             onPress={testVoiceGuidance}
           >
-            <Text className="text-blue-600 font-semibold">Test Voice Guidance</Text>
+            <Text style={{ color: "#1A75BB" }} className="font-semibold">Test Voice Guidance</Text>
             <Text className="text-gray-600 text-sm">
               Play a sample navigation instruction
             </Text>
@@ -82,9 +86,9 @@ export default function SettingsPage() {
           </View>
         </View>
 
-        <View className="bg-blue-50 p-4 rounded-lg">
-          <Text className="text-blue-900 font-semibold mb-2">About</Text>
-          <Text className="text-blue-700 text-sm">
+        <View style={{ backgroundColor: "#E8F4FC" }} className="p-4 rounded-lg">
+          <Text style={{ color: "#1A75BB" }} className="font-semibold mb-2">About</Text>
+          <Text style={{ color: "#0D5A94" }} className="text-sm">
             JET2 NAV is an accessible indoor navigation system designed to help users navigate buildings with voice guidance and haptic feedback.
           </Text>
         </View>
