@@ -64,13 +64,13 @@ export default function GuidancePage() {
         duration: 3000,
         deltaX: 0,
         deltaY: -10,
-        hapticCount: 2,
+        hapticCount: 5,
       },
       {
         text: "Now take a couple steps and turn right",
         duration: 1000,
         deltaX: 0,
-        deltaY: -4,
+        deltaY: -2,
         hapticCount: 1,
       },{
         text: "Now take about 35 steps forwards.",
@@ -80,10 +80,10 @@ export default function GuidancePage() {
         hapticCount: 0,
       },{
         text: "Ok There should be an elevator ahead on your left, lets get in it.",
-        duration: 2000,
+        duration: 3000,
         deltaX: 0,
         deltaY: -5,
-        hapticCount: 1,
+        hapticCount: 5,
       },{
         text: "Ok we need to go up to floor 3, press the button for floor 3 and exit the elevator on your right.",
         duration: 3100,
@@ -96,20 +96,36 @@ export default function GuidancePage() {
         deltaX: 0,
         deltaY: 5,
         hapticCount: 1,
-      },{
-        text: "Now take about 20 steps forwards.",
-        duration: 6000,
-        deltaX: -75,
-        deltaY: 0,
-        hapticCount: 0,
-      },{
-        text: "Exit the elevator then turn right",
-        duration: 2000,
-        deltaX: 0,
-        deltaY: 5,
-        hapticCount: 1,
       },
     ];
+
+    const waitForConfirmation = async (
+      prompt: string,
+      keywords: string[]
+    ) => {
+      while (!isCancelled) {
+        await speechService
+          .speak(prompt)
+          .catch((err) => console.error("TTS error:", err));
+
+        try {
+          await voiceService.startListening();
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          const result = await voiceService.stopListening();
+          const heard = (result?.transcript || "").toLowerCase();
+
+          if (keywords.some((kw) => heard.includes(kw))) {
+            return;
+          }
+        } catch (err) {
+          console.error("Confirmation listen error:", err);
+        }
+
+        await speechService
+          .speak("I didn't catch that, please say it again.")
+          .catch((err) => console.error("TTS error:", err));
+      }
+    };
 
     const run = async () => {
       for (const step of steps) {
@@ -144,6 +160,21 @@ export default function GuidancePage() {
 
         move.start();
         await new Promise((resolve) => setTimeout(resolve, step.duration));
+
+        // Elevator checkpoints: after elevator entry and after ride
+        if (step.text.includes("get in it")) {
+          await waitForConfirmation(
+            "Let me know when you are inside the elevator. Say inside when you're in.",
+            ["inside", "in"]
+          );
+        }
+
+        if (step.text.includes("press the button for floor 3")) {
+          await waitForConfirmation(
+            "Say out when you exit the elevator so we can continue.",
+            ["out", "outside", "exit"]
+          );
+        }
       }
       setCurrentInstruction(null);
     };
